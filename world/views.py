@@ -156,7 +156,6 @@ def crawl_detail(datas):
                     continue
                 elif level==2:
                     level=3
-                    continue
             except Exception as e:
                 print('@@ 2 ys',strength,crit)
                 print("lev 2 ys",e)
@@ -187,7 +186,6 @@ def crawl_detail(datas):
                     continue
                 elif level==4:
                     level=5
-                    continue
             except Exception as e:
                 print("lev 4 k",e)
                 break
@@ -262,7 +260,7 @@ def getValue(row):
     try:
         if row[1].a!=None:
             strength=float(row[1].a.text.split('=')[-1].strip())
-            print('@@getValue',strength)
+            # print('@@getValue',strength)
         else:
             arr=[float(num.strip()) for num in row[1].text.split('=')[-1].split('%')[0].strip().split('-')]
             # &gt; x.xx %
