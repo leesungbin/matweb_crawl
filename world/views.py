@@ -1,4 +1,6 @@
 from django.shortcuts import render
+from django.http import JsonResponse
+
 import requests
 from selenium import webdriver
 # import re
@@ -8,11 +10,16 @@ from world.models import Composition, Tag, TensileStrength, YieldStrength, Therm
 root='http://www.matweb.com'
 
 def crawl_lists(num_str):
+    Stainless.objects.filter(name__icontains=num_str).delete()
     url=root+'/search/QuickText.aspx?SearchText='
-    data=requests.get(url+num_str)
+    data=requests.get(url+num_str.replace(' ',''))
     html=BeautifulSoup(data.text,'lxml')
     # print(html)
+    # try:
     table=html.find("table",{"id":"tblResults"}).find_all('tr')
+    # except:
+    #     status['blocked']=True
+    #     return status
     lists=[]
     for tr in table:    
         tds=tr.find_all('td')
@@ -21,15 +28,17 @@ def crawl_lists(num_str):
             a=tds[2].a
             name=''
             tags=[]
-            if num_str+" Stainless Steel" == a.text.strip():
+            num_str=num_str.replace(' ','').lower()
+            compare_text = a.text.strip().replace(' ','').lower()
+            if num_str+"stainlesssteel" == compare_text:
                 flag=True
                 name=a.text.strip()
 
-            elif num_str+" Stainless Steel" in a.text:
+            elif num_str+"stainlesssteel" in compare_text:
                 flag=True
                 name,tags = SemiOrColon(a.text)
 
-            elif num_str in a.text and "Stainless Steel" in a.text:
+            elif num_str in compare_text and "stainlesssteel" in compare_text:
                 flag=True
                 name,tags = SemiOrColon(a.text)
 
@@ -40,14 +49,28 @@ def crawl_lists(num_str):
     return lists
 
 def crawl_detail(datas):
-    browser=webdriver.Chrome()
+    status={'ok':0,'err':0,'blocked':False}
+    PROXY = "socks5://127.0.0.1:9050"
+    options=webdriver.ChromeOptions()
+    options.add_argument('headless')
+    options.add_argument('window-size=1920x1080')
+    options.add_argument('disable-gpu')
+    options.add_argument('--proxy-server=%s' % PROXY)
+    browser=webdriver.Chrome('chromedriver',chrome_options=options)
+
     for i,data in enumerate(datas):
+        browser=webdriver.Chrome('chromedriver',chrome_options=options)
         browser.get(data['url'])
         browser.implicitly_wait(3)
         html=browser.page_source
+        # print(html)
         soup=BeautifulSoup(html,'lxml')
-        table=soup.find_all("table",{"class":"tabledataformat"})
-        trs=table[2].find_all("tr",{"class":"datarowSeparator"})
+        try:
+            table=soup.find_all("table",{"class":"tabledataformat"})
+            trs=table[2].find_all("tr",{"class":"datarowSeparator"})
+        except:
+            status['blocked']=True
+            return status
 
         level=-1 # 0 : TS, 1 : YS, 2 : Thermal, 3 : composition
         stainless=Stainless.objects.create(name=data['name'], num=data['num'])
@@ -226,14 +249,17 @@ def crawl_detail(datas):
         
         print(str(i+1)+" / "+str(len(datas)),end=' ')
         if level<6:
+            status['err']=status['err']+1
             print(level,'less than 6 = not sufficient of data')
             try: stainless.delete()
             except: print('already deleted.')
         else:
+            status['ok']=status['ok']+1
             print(stainless.name,stainless.tag_set.all())
         # stainless.save()
-        # print(stainless, stainless.tag_set.all()) 
-        
+        # print(stainless, stainless.tag_set.all())
+        browser.quit()
+    return status
     # table=detail_html.find_all("table",{"class":"tabledataformat"})
     # print(len(table.find_all("tr")))   
     #detail page 데이터 존재 유무 확인, TS, YS, k
@@ -245,9 +271,9 @@ def crawl_detail(datas):
 
 def main(request,name):
     datas=crawl_lists(name)
-    crawl_detail(datas)
-
-    return render(request,'world/index.html')
+    status=crawl_detail(datas)
+    return JsonResponse(status)
+    # return render(request,'world/index.html')
 
 def SemiOrColon(text):
     sem=text.split(';')
