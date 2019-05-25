@@ -11,7 +11,7 @@ def crawl_lists(num_str):
     url=root+'/search/QuickText.aspx?SearchText='
     data=requests.get(url+num_str)
     html=BeautifulSoup(data.text,'lxml')
-    print(html)
+    # print(html)
     table=html.find("table",{"id":"tblResults"}).find_all('tr')
     lists=[]
     for tr in table:    
@@ -102,76 +102,69 @@ def crawl_detail(datas):
                         cond=cond
                     )
                     continue
+                elif level==0:
+                    level=1
             except Exception as e:
                 print("lev 0 ts",e)
                 break
             try:
-                if level==0 and "Tensile Strength, Yield" == tr.td.text.strip():
-                    level=1
-                    row=tr.find_all("td")
-                    strength,crit=getValue(row)
-                    cond=''
-                    temperature=20
-                    # print('@@',strength,crit)
-
-                    idx=crit.find('Temperature')
-                    if crit!='' and idx>-1: # @Temperature
-                        temperature=float(crit[idx+12:].split(' ')[0])
-                        if idx>3: #other condition given
-                            cond=crit.split(",")[0]
-                    
-                    YieldStrength.objects.create(
-                        stainless=stainless,
-                        strength=strength,
-                        crit=temperature,
-                        cond=cond
-                    )
-                    continue
-            except Exception as e:
-                print("lev 0->1 ys",e)
-                break
-            try:
-                if level==1 and tr.td.text.strip()=='':
-                    row=tr.find_all("td")
-                    strength,crit=getValue(row)
-                    cond=''
-                    temperature=20
-                    # print('@@',strength,crit)
-
-                    idx=crit.find('Temperature')
-                    if crit!='' and idx>-1: # @Temperature
-                        temperature=float(crit[idx+12:].split(' ')[0])
-                        if idx>3: #other condition given
-                            cond=crit.split(",")[0]
-                    
-                    YieldStrength.objects.create(
-                        stainless=stainless,
-                        strength=strength,
-                        crit=temperature,
-                        cond=cond
-                    )
-                    continue
-            except Exception as e:
-                print('@@ 1 ys',strength,crit)
-                print("lev 1 ys",e)
-                break
-            try:
-                if level==1 and "Thermal Conductivity" == tr.td.text.strip():
+                if level==1 and "Tensile Strength, Yield" == tr.td.text.strip():
                     level=2
                     row=tr.find_all("td")
-                    k,crit=getValue(row)
-                    if crit=='':
-                        ThermodynamicProperty.objects.create(stainless=stainless,k=k)
-                    else:
-                        crit=float(crit.split(' ')[1])
-                        ThermodynamicProperty.objects.create(stainless=stainless,k=k,crit=crit)
+                    strength,crit=getValue(row)
+                    cond=''
+                    temperature=20
+                    # print('@@',strength,crit)
+
+                    idx=crit.find('Temperature')
+                    if crit!='' and idx>-1: # @Temperature
+                        temperature=float(crit[idx+12:].split(' ')[0])
+                        if idx>3: #other condition given
+                            cond=crit.split(",")[0]
+                    
+                    YieldStrength.objects.create(
+                        stainless=stainless,
+                        strength=strength,
+                        crit=temperature,
+                        cond=cond
+                    )
                     continue
+                
             except Exception as e:
-                print("lev 1->2 k",e)
+                print("lev 1->2 ys",e)
                 break
             try:
                 if level==2 and tr.td.text.strip()=='':
                     row=tr.find_all("td")
+                    strength,crit=getValue(row)
+                    cond=''
+                    temperature=20
+                    # print('@@',strength,crit)
+
+                    idx=crit.find('Temperature')
+                    if crit!='' and idx>-1: # @Temperature
+                        temperature=float(crit[idx+12:].split(' ')[0])
+                        if idx>3: #other condition given
+                            cond=crit.split(",")[0]
+                    
+                    YieldStrength.objects.create(
+                        stainless=stainless,
+                        strength=strength,
+                        crit=temperature,
+                        cond=cond
+                    )
+                    continue
+                elif level==2:
+                    level=3
+                    continue
+            except Exception as e:
+                print('@@ 2 ys',strength,crit)
+                print("lev 2 ys",e)
+                break
+            try:
+                if level==3 and "Thermal Conductivity" == tr.td.text.strip():
+                    level=4
+                    row=tr.find_all("td")
                     k,crit=getValue(row)
                     if crit=='':
                         ThermodynamicProperty.objects.create(stainless=stainless,k=k)
@@ -180,11 +173,27 @@ def crawl_detail(datas):
                         ThermodynamicProperty.objects.create(stainless=stainless,k=k,crit=crit)
                     continue
             except Exception as e:
-                print("lev 2 k",e)
+                print("lev 3->4 k",e)
                 break
             try:
-                if level==2 and "Carbon" in tr.td.text:
-                    level=3
+                if level==4 and tr.td.text.strip()=='':
+                    row=tr.find_all("td")
+                    k,crit=getValue(row)
+                    if crit=='':
+                        ThermodynamicProperty.objects.create(stainless=stainless,k=k)
+                    else:
+                        crit=float(crit.split(' ')[1])
+                        ThermodynamicProperty.objects.create(stainless=stainless,k=k,crit=crit)
+                    continue
+                elif level==4:
+                    level=5
+                    continue
+            except Exception as e:
+                print("lev 4 k",e)
+                break
+            try:
+                if level==5 and ("Carbon" in tr.td.text or "Boron" in tr.td.text):
+                    level=6
                     row=tr.find_all("td")
                     compound=row[0].text.split(',')[1].strip()
 
@@ -197,10 +206,10 @@ def crawl_detail(datas):
                     )
                     continue
             except Exception as e:
-                print("lev 2->3 composition",e)
+                print("lev 5->6 composition",e)
                 break
             try:
-                if level==3:
+                if level==6:
                     row=tr.find_all("td")
                     compound=row[0].text.split(',')[1].strip()
 
@@ -214,12 +223,12 @@ def crawl_detail(datas):
                     continue
             except Exception as e:
                 stainless.delete()
-                print("lev 3 composition",e)
+                print("lev 6 composition",e)
                 break
         
         print(str(i+1)+" / "+str(len(datas)),end=' ')
-        if level<3:
-            print(level,'less than 3 = not sufficient of data')
+        if level<6:
+            print(level,'less than 6 = not sufficient of data')
             try: stainless.delete()
             except: print('already deleted.')
         else:
@@ -250,20 +259,21 @@ def SemiOrColon(text):
     return sem[0], [s.strip() for s in sem[1:]]
 
 def getValue(row):
-    if row[1].a!=None:
-        try:
-            strength=float(row[1].a.text.split(';')[-1].strip())
-        except Exception as e:
-            print("=========error strength=========")
-            strength=-1
-            print(row,e)    
-    else:
-        arr=[float(num.strip()) for num in row[1].text.split(';')[-1].split('%')[0].strip().split('-')]
-        # &gt; x.xx %
-        # &lt; x.xx
-        # x.xx %
-        # x.xx - y.yy
-        strength=sum(arr)/len(arr)
+    try:
+        if row[1].a!=None:
+            strength=float(row[1].a.text.split('=')[-1].strip())
+            print('@@getValue',strength)
+        else:
+            arr=[float(num.strip()) for num in row[1].text.split('=')[-1].split('%')[0].strip().split('-')]
+            # &gt; x.xx %
+            # &lt; x.xx
+            # x.xx %
+            # x.xx - y.yy
+            strength=sum(arr)/len(arr)
+    except Exception as e:
+        print("=========error strength=========")
+        strength=-1
+        print(row,e)    
 
     try:
         crit=row[1].span.text.strip()
