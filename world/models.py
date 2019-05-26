@@ -26,7 +26,7 @@ class TensileStrength(models.Model):
     cond=models.CharField(blank=True, null=True, max_length=256)
     stainless=models.ForeignKey(Stainless,on_delete=models.CASCADE)
     def __str__(self):
-        return 'TS - '+str(self.strength)+' MPa at T='+str(self.crit)
+        return 'TS - '+str(self.strength)+' MPa at T='+str(self.crit)+' '+self.stainless.name
 
 class YieldStrength(models.Model):
     strength=models.FloatField(blank=True) #Yield Strength, MPa

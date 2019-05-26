@@ -20,4 +20,7 @@ from world import views
 urlpatterns = [
     path('', admin.site.urls),
     path('crawl/<str:name>', views.main),
+    path('train/',views.train),
+    # path('test/',views.test),
+    path('tensor_ts/',views.tensor_ts)
 ]

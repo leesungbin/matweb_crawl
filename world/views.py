@@ -7,6 +7,8 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 # Create your views here.
 from world.models import Composition, Tag, TensileStrength, YieldStrength, ThermodynamicProperty, Stainless
+from .train import make_compound_dict,train_ts
+
 root='http://www.matweb.com'
 
 def crawl_lists(num_str):
@@ -275,6 +277,14 @@ def main(request,name):
     return JsonResponse(status)
     # return render(request,'world/index.html')
 
+def train(request):
+    make_compound_dict()
+    return JsonResponse({'url':'train'})
+
+# def test(request):
+#     test_db()
+#     return JsonResponse({'url':'test'})
+
 def SemiOrColon(text):
     sem=text.split(';')
     col=text.split(',')
@@ -307,3 +317,7 @@ def getValue(row):
         print(row,e)
     return strength, crit
     # return strength,''
+
+def tensor_ts(request):
+    train_ts()
+    return JsonResponse({'hi':'world'})
